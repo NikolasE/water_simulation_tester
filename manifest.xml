@@ -1,0 +1,15 @@
+<package>
+  <description brief="simulation_caller">
+
+     simulation_caller
+
+  </description>
+  <author>Nikolas Engelhard</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/simulation_caller</url>
+  <depend package="water_simulation"/>
+
+</package>
+
+
