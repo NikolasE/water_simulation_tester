@@ -44,23 +44,20 @@ int main(int argc, char ** argv){
 
  land = cv::imread(argv[1],0);
  cv::resize(land, land, cv::Size(),scale,scale, CV_INTER_CUBIC);
- land.convertTo(land, CV_64FC1,0.2/255); // full white corresponds to a height of 0.2m
+ land.convertTo(land, CV_32FC1,0.2/255); // full white corresponds to a height of 0.2m
 
  cv_bridge::CvImage out_msg;
- out_msg.encoding = sensor_msgs::image_encodings::TYPE_64FC1;
+ out_msg.encoding = sensor_msgs::image_encodings::TYPE_32FC1;
  out_msg.image    = land;
 
 
  water_simulation::simulator_init srv_msg;
  srv_msg.request.id = 42; // set id to some arbitrary value
  srv_msg.request.land_img = *out_msg.toImageMsg();
- srv_msg.request.viscosity = 0.9; // viscosity of simulation in the interval (0,1]
+ srv_msg.request.viscosity = 1; // viscosity of simulation in the interval (0,1]
  srv_msg.request.add_sink_border = true; // water at the border of the grid vanishes
 
 
- // make sure that the service is available e.g.
- // > rosrun water_simulation simulation
- // was called
  ros::service::waitForService("srv_simulator_init",ros::DURATION_MAX);
  ros::service::waitForService("srv_simulator_step",ros::DURATION_MAX);
 
@@ -73,28 +70,31 @@ int main(int argc, char ** argv){
 
  water_simulation::simulator_step msg_step;
  msg_step.request.id = srv_msg.request.id;
- msg_step.request.iteration_cnt = 50;
+ msg_step.request.iteration_cnt = 10;
 
 
- // always 0.2 water on this spot
+
  water_simulation::msg_source_sink source;
- source.height = 0.2; // new height of 20cm
+ source.height = 0.2; // new height in m
  source.x = 246; // position in grid
  source.y = 96;
  source.radius = 10; // radius of new source
+ source.additive = false;
  msg_step.request.sources_sinks.push_back(source);
 
- // remove all water in this area
- source.height = 0.0; // all water in this area vanishes
- source.x = 200;
- source.radius = 20; // large sink
- msg_step.request.sources_sinks.push_back(source);
+// // remove all water in this area
+// source.height = 0.0; // all water in this area vanishes
+// source.x = 200;
+// source.radius = 20; // large sink
+// msg_step.request.sources_sinks.push_back(source);
 
  cv::namedWindow("water");
 
- cv::Mat water_img;
- ros::Rate r(10);
+ ros::Rate r(20);
+ int iter = 0;
  while (ros::ok()){
+
+   ROS_INFO("Sending step %i", iter++);
 
   if (ros::service::call("srv_simulator_step", msg_step)){
 
@@ -102,12 +102,11 @@ int main(int argc, char ** argv){
     ROS_WARN("SENT request with wrong id!");
 
    }else{
-    // ROS_INFO("new steps");
     cv_bridge::CvImagePtr cv_ptr;
-    cv_ptr = cv_bridge::toCvCopy(msg_step.response.water_img, enc::TYPE_64FC1);
+    cv_ptr = cv_bridge::toCvCopy(msg_step.response.water_img, enc::TYPE_32FC1);
 
     cv::imshow("water", cv_ptr->image*10);
-    cv::waitKey(1);
+    cv::waitKey(10);
    }
 
   }
